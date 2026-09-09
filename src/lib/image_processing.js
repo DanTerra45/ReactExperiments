@@ -179,6 +179,89 @@ export async function create_difference_overlay(
   };
 }
 
+function pixel_luminance(pixels, index) {
+  const alpha = pixels[index + 3] / 255;
+  const red = pixels[index] * alpha + 255 * (1 - alpha);
+  const green = pixels[index + 1] * alpha + 255 * (1 - alpha);
+  const blue = pixels[index + 2] * alpha + 255 * (1 - alpha);
+
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722;
+}
+
+export async function calculate_ssim(original_image_data, converted_blob) {
+  const converted = await load_image_data(converted_blob);
+
+  if (
+    converted.width !== original_image_data.width ||
+    converted.height !== original_image_data.height
+  ) {
+    throw new Error('The converted image dimensions do not match the original.');
+  }
+
+  const block_size = 8;
+  const c1 = (0.01 * 255) ** 2;
+  const c2 = (0.03 * 255) ** 2;
+  const original_pixels = original_image_data.data;
+  const converted_pixels = converted.image_data.data;
+  const width = original_image_data.width;
+  const height = original_image_data.height;
+  let weighted_ssim = 0;
+  let total_weight = 0;
+
+  for (let block_y = 0; block_y < height; block_y += block_size) {
+    const block_height = Math.min(block_size, height - block_y);
+
+    for (let block_x = 0; block_x < width; block_x += block_size) {
+      const block_width = Math.min(block_size, width - block_x);
+      const pixel_count = block_width * block_height;
+      let original_sum = 0;
+      let converted_sum = 0;
+      let original_square_sum = 0;
+      let converted_square_sum = 0;
+      let product_sum = 0;
+
+      for (let y = 0; y < block_height; y += 1) {
+        for (let x = 0; x < block_width; x += 1) {
+          const pixel_index = ((block_y + y) * width + block_x + x) * 4;
+          const original_luminance = pixel_luminance(original_pixels, pixel_index);
+          const converted_luminance = pixel_luminance(converted_pixels, pixel_index);
+
+          original_sum += original_luminance;
+          converted_sum += converted_luminance;
+          original_square_sum += original_luminance * original_luminance;
+          converted_square_sum += converted_luminance * converted_luminance;
+          product_sum += original_luminance * converted_luminance;
+        }
+      }
+
+      const original_mean = original_sum / pixel_count;
+      const converted_mean = converted_sum / pixel_count;
+      const denominator = Math.max(1, pixel_count - 1);
+      const original_variance = Math.max(
+        0,
+        (original_square_sum - (original_sum * original_sum) / pixel_count) / denominator,
+      );
+      const converted_variance = Math.max(
+        0,
+        (converted_square_sum - (converted_sum * converted_sum) / pixel_count) / denominator,
+      );
+      const covariance =
+        (product_sum - (original_sum * converted_sum) / pixel_count) / denominator;
+      const numerator =
+        (2 * original_mean * converted_mean + c1) * (2 * covariance + c2);
+      const ssim_denominator =
+        (original_mean ** 2 + converted_mean ** 2 + c1) *
+        (original_variance + converted_variance + c2);
+      const block_ssim = ssim_denominator === 0 ? 1 : numerator / ssim_denominator;
+
+      weighted_ssim += block_ssim * pixel_count;
+      total_weight += pixel_count;
+    }
+  }
+
+  return total_weight ? weighted_ssim / total_weight : 1;
+}
+
 export function format_bytes(bytes) {
   if (bytes < 1024) {
     return `${bytes} B`;

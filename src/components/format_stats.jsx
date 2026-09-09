@@ -39,7 +39,7 @@ export default function FormatStats({ source, converted, download_name }) {
         ) : null}
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-xl border border-zinc-200 bg-white md:grid-cols-4 dark:border-zinc-800 dark:bg-zinc-900">
+      <dl className="mt-4 grid grid-cols-2 overflow-hidden rounded-xl border border-zinc-200 bg-white md:grid-cols-5 dark:border-zinc-800 dark:bg-zinc-900">
         <div className="border-b border-r border-zinc-200 p-4 md:border-b-0 dark:border-zinc-800">
           <dt className="text-xs text-zinc-500">Original size</dt>
           <dd className="mt-1 tabular-nums text-lg font-semibold text-zinc-950">
@@ -62,6 +62,17 @@ export default function FormatStats({ source, converted, download_name }) {
           <dt className="text-xs text-zinc-500">Encode time</dt>
           <dd className="mt-1 tabular-nums text-lg font-semibold text-zinc-950">
             {converted ? `${Math.round(converted.duration_ms)} ms` : '—'}
+          </dd>
+        </div>
+        <div className="col-span-2 border-t border-zinc-200 p-4 md:col-span-1 md:border-l md:border-t-0 dark:border-zinc-800">
+          <dt
+            className="text-xs text-zinc-500"
+            title="Structural similarity. 1.0000 means identical rendered pixels."
+          >
+            SSIM
+          </dt>
+          <dd className="mt-1 tabular-nums text-lg font-semibold text-zinc-950">
+            {converted?.ssim_score == null ? '—' : converted.ssim_score.toFixed(4)}
           </dd>
         </div>
       </dl>

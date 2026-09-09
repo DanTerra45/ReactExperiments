@@ -6,6 +6,7 @@ import FormatStats from './components/format_stats.jsx';
 import ImageComparison from './components/image_comparison.jsx';
 import ImageSourcePicker from './components/image_source_picker.jsx';
 import {
+  calculate_ssim,
   convert_image,
   create_difference_overlay,
   format_output_filename,
@@ -363,6 +364,13 @@ export default function App() {
       const blob = await convert_image(source.image_data, format, quality);
       const duration_ms = performance.now() - started_at;
       const url = create_object_url(blob);
+      let ssim_score = null;
+
+      try {
+        ssim_score = await calculate_ssim(source.image_data, blob);
+      } catch {
+        // Conversion remains usable even if the diagnostic metric fails.
+      }
 
       set_converted({
         blob,
@@ -370,6 +378,7 @@ export default function App() {
         format,
         quality,
         duration_ms,
+        ssim_score,
       });
     } catch (conversion_error) {
       set_conversion_error(

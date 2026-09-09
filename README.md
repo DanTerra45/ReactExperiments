@@ -6,7 +6,7 @@ Small React demo for comparing image formats in the browser.
 
 - Loads a local image or fetches random remote photos for quick testing, including varied aspect ratios capped at 2048 px on the longest edge.
 - Encodes the same pixels as AVIF or WebP with jSquash/WebAssembly, with JPEG and PNG as browser-native comparison baselines.
-- Shows original size, converted size, percentage saved, dimensions, and encode time.
+- Shows original size, converted size, signed size change, dimensions, encode time, and block-based SSIM.
 - Provides a draggable before/after split for visual inspection.
 - Adds synchronized zoom and pan up to `8x` for inspecting compression artifacts closely.
 - Optionally overlays a perceptual Pixelmatch difference mask with fine, balanced, or major sensitivity.
@@ -25,6 +25,14 @@ Production build:
 pnpm build
 pnpm preview
 ```
+
+Deploy the built static assets to the Worker configured in `wrangler.jsonc`:
+
+```bash
+pnpm deploy
+```
+
+The deploy script builds first, then runs the pinned Wrangler CLI against `./dist`.
 
 ## Notes
 
