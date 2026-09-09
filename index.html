@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      (() => {
+        const settings_key = 'react_formats_settings';
+        let is_dark = false;
+
+        try {
+          const stored = JSON.parse(localStorage.getItem(settings_key));
+          is_dark =
+            stored?.theme === 'dark' ||
+            (!stored?.theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        } catch {
+          is_dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+
+        document.documentElement.classList.toggle('dark', is_dark);
+        document.documentElement.style.colorScheme = is_dark ? 'dark' : 'light';
+      })();
+    </script>
+    <style>
+      html,
+      body {
+        background: #fafafa;
+      }
+
+      html.dark,
+      html.dark body {
+        background: #09090b;
+      }
+    </style>
+    <meta
+      name="description"
+      content="Client-side WebP and AVIF image format comparison demo."
+    />
+    <title>Experiments</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

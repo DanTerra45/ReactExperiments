@@ -1,0 +1,33 @@
+{
+  "name": "react-formats",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@11.26.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@jsquash/avif": "2.1.1",
+    "@jsquash/webp": "1.5.0",
+    "clsx": "2.1.1",
+    "gifenc": "1.0.3",
+    "lucide-react": "1.43.0",
+    "pixelmatch": "7.2.0",
+    "react-zoom-pan-pinch": "4.2.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "tailwind-merge": "3.6.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@vitejs/plugin-react": "6.1.1",
+    "tailwindcss": "4.3.3",
+    "vite": "8.2.2"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

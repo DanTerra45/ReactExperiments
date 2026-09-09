@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  color: #18181b;
+  background: #fafafa;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100dvh;
+  background: #fafafa;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background: #09090b;
+}
+
+.dark .bg-white {
+  background-color: #18181b;
+}
+
+.dark .bg-zinc-50,
+.dark .bg-zinc-100 {
+  background-color: #18181b;
+}
+
+.dark .bg-blue-50 {
+  background-color: #172554;
+}
+
+.dark .border-zinc-200,
+.dark .border-zinc-300,
+.dark .border-zinc-400 {
+  border-color: #3f3f46;
+}
+
+.dark .text-zinc-950,
+.dark .text-zinc-900,
+.dark .text-zinc-800 {
+  color: #f4f4f5;
+}
+
+.dark .text-zinc-700 {
+  color: #d4d4d8;
+}
+
+.dark .text-zinc-600,
+.dark .text-zinc-500 {
+  color: #a1a1aa;
+}
+
+.dark .text-blue-900,
+.dark .text-blue-700 {
+  color: #bfdbfe;
+}
+
+.dark .text-red-700 {
+  color: #fca5a5;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+::selection {
+  background: #dbeafe;
+  color: #172554;
+}
