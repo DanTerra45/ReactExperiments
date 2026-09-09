@@ -176,6 +176,62 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
+    let is_cancelled = false;
+    let generated_url = '';
+
+    if (!show_difference || !source || !converted) {
+      set_difference_url('');
+      set_difference_stats(null);
+      set_is_difference_loading(false);
+      return undefined;
+    }
+
+    set_difference_url('');
+    set_difference_stats(null);
+    set_difference_error('');
+    set_is_difference_loading(true);
+
+    async function generate_difference() {
+      try {
+        const difference_result = await create_difference_overlay(
+          source.image_data,
+          converted.blob,
+          difference_sensitivity,
+        );
+
+        if (is_cancelled) {
+          return;
+        }
+
+        generated_url = create_object_url(difference_result.blob);
+        set_difference_url(generated_url);
+        set_difference_stats(difference_result);
+      } catch (overlay_error) {
+        if (!is_cancelled) {
+          set_difference_error(
+            overlay_error instanceof Error
+              ? overlay_error.message
+              : 'Could not build the difference map.',
+          );
+        }
+      } finally {
+        if (!is_cancelled) {
+          set_is_difference_loading(false);
+        }
+      }
+    }
+
+    generate_difference();
+
+    return () => {
+      is_cancelled = true;
+      if (generated_url) {
+        revoke_object_url(generated_url);
+      }
+    };
+  }, [source, converted, show_difference, difference_sensitivity]);
+
+  useEffect(() => {
     return () => {
       object_urls.current.forEach((url) => URL.revokeObjectURL(url));
       object_urls.current.clear();
@@ -315,28 +371,6 @@ export default function App() {
         quality,
         duration_ms,
       });
-
-      if (show_difference) {
-        set_is_difference_loading(true);
-
-        try {
-          const difference_result = await create_difference_overlay(
-            source.image_data,
-            blob,
-            difference_sensitivity,
-          );
-          set_difference_url(create_object_url(difference_result.blob));
-          set_difference_stats(difference_result);
-        } catch (overlay_error) {
-          set_difference_error(
-            overlay_error instanceof Error
-              ? overlay_error.message
-              : 'Could not build the difference map.',
-          );
-        } finally {
-          set_is_difference_loading(false);
-        }
-      }
     } catch (conversion_error) {
       set_conversion_error(
         conversion_error instanceof Error
@@ -345,58 +379,16 @@ export default function App() {
       );
     } finally {
       set_is_converting(false);
-      set_is_difference_loading(false);
     }
   }
 
-  async function build_difference_overlay(sensitivity) {
-    if (!source || !converted) {
-      return;
-    }
-
-    set_difference_error('');
-    set_is_difference_loading(true);
-
-    try {
-      const difference_result = await create_difference_overlay(
-        source.image_data,
-        converted.blob,
-        sensitivity,
-      );
-      const url = create_object_url(difference_result.blob);
-
-      if (difference_url) {
-        revoke_object_url(difference_url);
-      }
-
-      set_difference_url(url);
-      set_difference_stats(difference_result);
-    } catch (overlay_error) {
-      set_difference_error(
-        overlay_error instanceof Error
-          ? overlay_error.message
-          : 'Could not build the difference map.',
-      );
-    } finally {
-      set_is_difference_loading(false);
-    }
-  }
-
-  async function handle_difference_change(checked) {
+  function handle_difference_change(checked) {
     set_difference_error('');
     set_show_difference(checked);
-
-    if (checked && !difference_url) {
-      await build_difference_overlay(difference_sensitivity);
-    }
   }
 
-  async function handle_difference_sensitivity_change(sensitivity) {
+  function handle_difference_sensitivity_change(sensitivity) {
     set_difference_sensitivity(sensitivity);
-
-    if (show_difference) {
-      await build_difference_overlay(sensitivity);
-    }
   }
 
   const download_name = source
