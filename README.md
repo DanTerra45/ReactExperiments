@@ -5,12 +5,16 @@ Small React demo for comparing image formats in the browser.
 ## What it does
 
 - Loads a local image or fetches random remote photos for quick testing, including varied aspect ratios capped at 2048 px on the longest edge.
-- Encodes the same pixels as AVIF or WebP with jSquash/WebAssembly, with JPEG and PNG as browser-native comparison baselines.
+- Encodes the same pixels as AVIF or WebP with jSquash/WebAssembly, with JPEG, PNG, and GIF as comparison baselines.
 - Shows original size, converted size, signed size change, dimensions, encode time, and block-based SSIM.
 - Provides a draggable before/after split for visual inspection.
 - Adds synchronized zoom and pan up to `8x` for inspecting compression artifacts closely.
 - Optionally overlays a perceptual Pixelmatch difference mask with fine, balanced, or major sensitivity.
 - Keeps user-selected files in the browser; there is no upload API or backend.
+
+## Client presentation route
+
+`/detail-preservation` is a simpler client-facing view focused on visual detail preservation. It includes a draggable original/optimized comparison, click-to-inspect synchronized `4x` detail crops, AVIF/WebP quality presets, a difference map, signed size change, and SSIM. Its UI copy avoids implementation-specific language about how the difference visualization is produced.
 
 ## Run
 
