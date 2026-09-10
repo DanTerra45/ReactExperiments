@@ -10,8 +10,18 @@ import {
 import { cn } from '../lib/cn.js';
 
 const SAMPLE_WIDTH = 2048;
-const SAMPLE_HEIGHT = 1536;
 const DETAIL_ZOOM = 4;
+const CLIENT_SAMPLES = [
+  { label: 'Clothing', photo_id: '3998646' },
+  { label: 'Toys', photo_id: '12482244' },
+  { label: 'Kitchenware', photo_id: '2817558' },
+  { label: 'Home cleaning', photo_id: '5217901' },
+  { label: 'Home decor', photo_id: '14458090' },
+  { label: 'Beauty & personal care', photo_id: '33469139' },
+  { label: 'Jewelry', photo_id: '29502955' },
+  { label: 'Bags & accessories', photo_id: '27100523' },
+  { label: 'Pets', photo_id: '16618516' },
+];
 const PRESETS = [
   { value: 'high', label: 'High quality', quality: 90 },
   { value: 'recommended', label: 'Recommended', quality: 75 },
@@ -79,6 +89,7 @@ export default function DetailPreservation() {
   const [view_mode, set_view_mode] = useState('normal');
   const [is_loading_source, set_is_loading_source] = useState(true);
   const [is_converting, set_is_converting] = useState(false);
+  const [sample_category, set_sample_category] = useState('');
   const [error, set_error] = useState('');
   const comparison_ref = useRef(null);
   const object_urls = useRef(new Set());
@@ -118,17 +129,22 @@ export default function DetailPreservation() {
   async function load_sample() {
     set_error('');
     set_is_loading_source(true);
-    const seed = crypto.getRandomValues(new Uint32Array(1))[0].toString(36);
+
+    const random_index = crypto.getRandomValues(new Uint32Array(1))[0] % CLIENT_SAMPLES.length;
+    const sample = CLIENT_SAMPLES[random_index];
+    const image_url = `https://images.pexels.com/photos/${sample.photo_id}/pexels-photo-${sample.photo_id}.jpeg?auto=compress&cs=tinysrgb&w=${SAMPLE_WIDTH}`;
 
     try {
-      const response = await fetch(
-        `https://picsum.photos/seed/detail-${seed}/${SAMPLE_WIDTH}/${SAMPLE_HEIGHT}.jpg`,
-      );
+      const response = await fetch(image_url);
       if (!response.ok) {
         throw new Error('The sample image could not be loaded.');
       }
 
-      await set_source_from_blob(await response.blob(), `detail-sample-${seed}.jpg`);
+      await set_source_from_blob(
+        await response.blob(),
+        `catalog-${sample.label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}.jpg`,
+      );
+      set_sample_category(sample.label);
     } catch (sample_error) {
       set_error(sample_error instanceof Error ? sample_error.message : 'The sample image could not be loaded.');
     } finally {
@@ -294,6 +310,7 @@ export default function DetailPreservation() {
 
     try {
       await set_source_from_blob(file, file.name);
+      set_sample_category('Your image');
     } catch (file_error) {
       set_error(file_error instanceof Error ? file_error.message : 'This image could not be loaded.');
     } finally {
@@ -357,9 +374,16 @@ export default function DetailPreservation() {
         <section aria-labelledby="comparison-heading" className="space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h2 id="comparison-heading" className="text-xl font-semibold text-zinc-950 dark:text-zinc-100">
-                See the difference
-              </h2>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 id="comparison-heading" className="text-xl font-semibold text-zinc-950 dark:text-zinc-100">
+                  See the difference
+                </h2>
+                {sample_category ? (
+                  <span className="rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
+                    {sample_category}
+                  </span>
+                ) : null}
+              </div>
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 Drag the divider. Click anywhere in the image to inspect that detail below.
               </p>

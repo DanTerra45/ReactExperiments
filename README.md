@@ -14,7 +14,7 @@ Small React demo for comparing image formats in the browser.
 
 ## Client presentation route
 
-`/detail-preservation` is a simpler client-facing view focused on visual detail preservation. It includes a draggable original/optimized comparison, click-to-inspect synchronized `4x` detail crops, AVIF/WebP quality presets, a difference map, signed size change, and SSIM. Its UI copy avoids implementation-specific language about how the difference visualization is produced.
+`/detail-preservation` is a simpler client-facing view focused on visual detail preservation. It includes a draggable original/optimized comparison, click-to-inspect synchronized `4x` detail crops, AVIF/WebP quality presets, a difference map, signed size change, and SSIM. Its random samples are curated around the catalog categories defined for the MVP (clothing, toys, kitchenware, home cleaning, home decor, beauty/personal care, jewelry, bags/accessories, and pets) instead of generic scenery. Its UI copy avoids implementation-specific language about how the difference visualization is produced.
 
 ## Run
 
