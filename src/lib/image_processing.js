@@ -57,6 +57,45 @@ export async function load_image_data(blob) {
   };
 }
 
+export async function create_degraded_preview(image_data) {
+  const source_canvas = image_data_to_canvas(image_data);
+  const reduced_canvas = document.createElement('canvas');
+  const scale = 0.18;
+
+  reduced_canvas.width = Math.max(1, Math.round(image_data.width * scale));
+  reduced_canvas.height = Math.max(1, Math.round(image_data.height * scale));
+
+  const reduced_context = reduced_canvas.getContext('2d');
+  reduced_context.imageSmoothingEnabled = true;
+  reduced_context.imageSmoothingQuality = 'low';
+  reduced_context.drawImage(
+    source_canvas,
+    0,
+    0,
+    reduced_canvas.width,
+    reduced_canvas.height,
+  );
+
+  const output_canvas = document.createElement('canvas');
+  output_canvas.width = image_data.width;
+  output_canvas.height = image_data.height;
+
+  const output_context = output_canvas.getContext('2d');
+  output_context.fillStyle = '#ffffff';
+  output_context.fillRect(0, 0, output_canvas.width, output_canvas.height);
+  output_context.imageSmoothingEnabled = true;
+  output_context.imageSmoothingQuality = 'low';
+  output_context.drawImage(
+    reduced_canvas,
+    0,
+    0,
+    output_canvas.width,
+    output_canvas.height,
+  );
+
+  return canvas_to_blob(output_canvas, 'image/jpeg', 0.2);
+}
+
 export async function convert_image(image_data, format, quality) {
   if (format === 'avif') {
     const { encode } = await import('@jsquash/avif');

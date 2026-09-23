@@ -1,8 +1,19 @@
-import { Crosshair, ImagePlus, MoveHorizontal, RefreshCw } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  Crosshair,
+  ImagePlus,
+  MoveHorizontal,
+  PawPrint,
+  RefreshCw,
+  Shirt,
+  Sparkles,
+  Watch,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
   calculate_ssim,
   convert_image,
+  create_degraded_preview,
   create_difference_overlay,
   format_bytes,
   load_image_data,
@@ -11,21 +22,66 @@ import { cn } from '../lib/cn.js';
 
 const SAMPLE_WIDTH = 2048;
 const DETAIL_ZOOM = 4;
+const CATALOG_GROUPS = [
+  {
+    value: 'clothing',
+    label: 'Clothing',
+    detail: 'Fabric, seams and finish',
+    icon: Shirt,
+  },
+  {
+    value: 'bags',
+    label: 'Bags & carry',
+    detail: 'Leather, stitching and hardware',
+    icon: BriefcaseBusiness,
+  },
+  {
+    value: 'accessories',
+    label: 'Accessories',
+    detail: 'Metal, edges and small details',
+    icon: Watch,
+  },
+  {
+    value: 'grooming',
+    label: 'Personal care',
+    detail: 'Labels, surfaces and packaging',
+    icon: Sparkles,
+  },
+  {
+    value: 'pets',
+    label: 'Pets',
+    detail: 'Fur, textile and texture',
+    icon: PawPrint,
+  },
+];
 const CLIENT_SAMPLES = [
-  { label: 'Clothing', photo_id: '3998646' },
-  { label: 'Toys', photo_id: '12482244' },
-  { label: 'Kitchenware', photo_id: '2817558' },
-  { label: 'Home cleaning', photo_id: '5217901' },
-  { label: 'Home decor', photo_id: '14458090' },
-  { label: 'Beauty & personal care', photo_id: '33469139' },
-  { label: 'Jewelry', photo_id: '29502955' },
-  { label: 'Bags & accessories', photo_id: '27100523' },
-  { label: 'Pets', photo_id: '16618516' },
+  { group: 'clothing', label: 'Clothing · denim stitching', photo_id: '19203164' },
+  { group: 'clothing', label: 'Clothing · knit texture', photo_id: '8842621' },
+  { group: 'clothing', label: 'Clothing · woven detail', photo_id: '6843263' },
+  { group: 'bags', label: 'Bags · leather texture', photo_id: '15059374' },
+  { group: 'bags', label: 'Bags · leather detail', photo_id: '27100523' },
+  { group: 'accessories', label: 'Accessories · metal detail', photo_id: '15709745' },
+  { group: 'accessories', label: 'Accessories · fine detail', photo_id: '28664773' },
+  { group: 'grooming', label: 'Personal care · packaging detail', photo_id: '11757215' },
+  { group: 'grooming', label: 'Personal care · product label', photo_id: '12243554' },
+  { group: 'pets', label: 'Pets · fur texture', photo_id: '19203519' },
 ];
 const PRESETS = [
-  { value: 'high', label: 'High quality', quality: 90 },
-  { value: 'recommended', label: 'Recommended', quality: 75 },
-  { value: 'smaller', label: 'Smaller file', quality: 45 },
+  {
+    value: 'high',
+    label: 'High quality',
+    quality: { avif: 55, webp: 70, jpeg: 70 },
+  },
+  {
+    value: 'recommended',
+    label: 'Recommended',
+    quality: { avif: 38, webp: 50, jpeg: 55 },
+  },
+  {
+    value: 'smaller',
+    label: 'Smaller file',
+    quality: { avif: 22, webp: 32, jpeg: 35 },
+  },
 ];
 const FORMATS = ['avif', 'webp'];
 
@@ -58,17 +114,23 @@ function DetailCrop({ label, image_url, focus_point, width, height }) {
         className="relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900"
         style={{ aspectRatio: `${width} / ${height}` }}
       >
-        <img
-          src={image_url}
-          alt={`${label} detail crop`}
-          className="pointer-events-none absolute max-w-none select-none"
-          style={{
-            width: `${DETAIL_ZOOM * 100}%`,
-            height: `${DETAIL_ZOOM * 100}%`,
-            left: `${left}%`,
-            top: `${top}%`,
-          }}
-        />
+        {image_url ? (
+          <img
+            src={image_url}
+            alt={`${label} detail crop`}
+            className="pointer-events-none absolute max-w-none select-none"
+            style={{
+              width: `${DETAIL_ZOOM * 100}%`,
+              height: `${DETAIL_ZOOM * 100}%`,
+              left: `${left}%`,
+              top: `${top}%`,
+            }}
+          />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-500 dark:text-zinc-400">
+            Preparing…
+          </div>
+        )}
       </div>
       <figcaption className="mt-2 flex items-center justify-between gap-3 text-sm">
         <span className="font-medium text-zinc-900 dark:text-zinc-100">{label}</span>
@@ -81,6 +143,8 @@ function DetailCrop({ label, image_url, focus_point, width, height }) {
 export default function DetailPreservation() {
   const [source, set_source] = useState(null);
   const [converted, set_converted] = useState(null);
+  const [high_quality_converted, set_high_quality_converted] = useState(null);
+  const [degraded_preview, set_degraded_preview] = useState(null);
   const [difference, set_difference] = useState(null);
   const [format, set_format] = useState('avif');
   const [preset, set_preset] = useState('recommended');
@@ -90,12 +154,17 @@ export default function DetailPreservation() {
   const [is_loading_source, set_is_loading_source] = useState(true);
   const [is_converting, set_is_converting] = useState(false);
   const [sample_category, set_sample_category] = useState('');
+  const [sample_group, set_sample_group] = useState('clothing');
   const [error, set_error] = useState('');
   const comparison_ref = useRef(null);
   const object_urls = useRef(new Set());
   const active_preset = PRESETS.find((item) => item.value === preset) ?? PRESETS[1];
+  const high_quality_preset = PRESETS.find((item) => item.value === 'high') ?? PRESETS[0];
   const supports_webassembly = typeof WebAssembly === 'object';
   const active_format = supports_webassembly ? format : 'jpeg';
+  const active_quality = active_preset.quality[active_format] ?? active_preset.quality.jpeg;
+  const high_quality =
+    high_quality_preset.quality[active_format] ?? high_quality_preset.quality.jpeg;
 
   useEffect(() => {
     return () => {
@@ -124,14 +193,17 @@ export default function DetailPreservation() {
     });
     set_focus_point({ x: 0.5, y: 0.5 });
     set_split_position(50);
+    set_preset('recommended');
   }
 
-  async function load_sample() {
+  async function load_sample(group = sample_group) {
     set_error('');
     set_is_loading_source(true);
 
-    const random_index = crypto.getRandomValues(new Uint32Array(1))[0] % CLIENT_SAMPLES.length;
-    const sample = CLIENT_SAMPLES[random_index];
+    const matching_samples = CLIENT_SAMPLES.filter((sample) => sample.group === group);
+    const sample_pool = matching_samples.length > 0 ? matching_samples : CLIENT_SAMPLES;
+    const random_index = crypto.getRandomValues(new Uint32Array(1))[0] % sample_pool.length;
+    const sample = sample_pool[random_index];
     const image_url = `https://images.pexels.com/photos/${sample.photo_id}/pexels-photo-${sample.photo_id}.jpeg?auto=compress&cs=tinysrgb&w=${SAMPLE_WIDTH}`;
 
     try {
@@ -144,6 +216,7 @@ export default function DetailPreservation() {
         await response.blob(),
         `catalog-${sample.label.toLowerCase().replaceAll(/[^a-z0-9]+/g, '-')}.jpg`,
       );
+      set_sample_group(sample.group);
       set_sample_category(sample.label);
     } catch (sample_error) {
       set_error(sample_error instanceof Error ? sample_error.message : 'The sample image could not be loaded.');
@@ -153,7 +226,7 @@ export default function DetailPreservation() {
   }
 
   useEffect(() => {
-    load_sample();
+    load_sample('clothing');
   }, []);
 
   useEffect(() => {
@@ -169,7 +242,7 @@ export default function DetailPreservation() {
 
     async function build_converted_image() {
       try {
-        const blob = await convert_image(source.image_data, active_format, active_preset.quality);
+        const blob = await convert_image(source.image_data, active_format, active_quality);
         const [ssim_score] = await Promise.all([
           calculate_ssim(source.image_data, blob),
         ]);
@@ -188,7 +261,7 @@ export default function DetailPreservation() {
             blob,
             url: generated_url,
             format: active_format,
-            quality: active_preset.quality,
+            quality: active_quality,
             ssim_score,
           };
         });
@@ -212,7 +285,88 @@ export default function DetailPreservation() {
     return () => {
       is_cancelled = true;
     };
-  }, [source, active_format, active_preset.quality]);
+  }, [source, active_format, active_quality]);
+
+  useEffect(() => {
+    let is_cancelled = false;
+
+    set_degraded_preview((previous_preview) => {
+      if (previous_preview?.url) {
+        revoke_object_url(previous_preview.url, object_urls);
+      }
+      return null;
+    });
+
+    if (!source) {
+      return undefined;
+    }
+
+    async function build_degraded_preview() {
+      try {
+        const blob = await create_degraded_preview(source.image_data);
+
+        if (is_cancelled) {
+          return;
+        }
+
+        const url = create_object_url(blob, object_urls);
+        set_degraded_preview({ blob, url });
+      } catch {
+        if (!is_cancelled) {
+          set_degraded_preview(null);
+        }
+      }
+    }
+
+    build_degraded_preview();
+
+    return () => {
+      is_cancelled = true;
+    };
+  }, [source]);
+
+  useEffect(() => {
+    let is_cancelled = false;
+
+    set_high_quality_converted((previous_converted) => {
+      if (previous_converted?.url) {
+        revoke_object_url(previous_converted.url, object_urls);
+      }
+      return null;
+    });
+
+    if (!source || active_quality === high_quality) {
+      return undefined;
+    }
+
+    async function build_high_quality_image() {
+      try {
+        const blob = await convert_image(source.image_data, active_format, high_quality);
+
+        if (is_cancelled) {
+          return;
+        }
+
+        const url = create_object_url(blob, object_urls);
+        set_high_quality_converted({
+          blob,
+          url,
+          format: active_format,
+          quality: high_quality,
+        });
+      } catch {
+        if (!is_cancelled) {
+          set_high_quality_converted(null);
+        }
+      }
+    }
+
+    build_high_quality_image();
+
+    return () => {
+      is_cancelled = true;
+    };
+  }, [source, active_format, active_quality, high_quality]);
 
   useEffect(() => {
     let is_cancelled = false;
@@ -328,7 +482,7 @@ export default function DetailPreservation() {
   return (
     <main className="min-h-dvh bg-zinc-50 text-zinc-950 dark:bg-zinc-950 dark:text-zinc-100">
       <div className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-6 dark:border-zinc-800">
+        <div className="flex flex-wrap items-center justify-between gap-4 pb-6">
           <a
             href="/"
             className="text-sm font-medium text-zinc-600 outline-none hover:text-zinc-950 focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 dark:text-zinc-400 dark:hover:text-white dark:focus-visible:ring-offset-zinc-950"
@@ -362,16 +516,69 @@ export default function DetailPreservation() {
           </div>
         </div>
 
-        <header className="max-w-3xl py-10 sm:py-14">
-          <h1 className="text-balance text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl dark:text-white">
-            Smaller files, with the product detail still visible.
-          </h1>
-          <p className="mt-4 max-w-2xl text-pretty text-base leading-7 text-zinc-600 sm:text-lg dark:text-zinc-400">
-            Compare the original and optimized image, inspect any area up close, and see the trade-off between transfer size and structural similarity.
-          </p>
-        </header>
+        <section
+          aria-labelledby="shopping-path-heading"
+          className="grid gap-7 border-y border-zinc-200 py-7 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:items-end dark:border-zinc-800"
+        >
+          <div className="max-w-xl">
+            <h1
+              id="shopping-path-heading"
+              className="text-3xl font-semibold tracking-tight text-zinc-950 sm:text-4xl dark:text-zinc-100"
+            >
+              Make the product easy to judge.
+            </h1>
+            <p className="mt-3 text-sm leading-6 text-zinc-600 sm:text-base dark:text-zinc-400">
+              Lead with product groups instead of a generic “for men” wall. Then preserve the
+              texture, finish, labels, and small details people actually inspect before buying.
+            </p>
+          </div>
 
-        <section aria-labelledby="comparison-heading" className="space-y-4">
+          <div>
+            <p className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Pick a shopping context
+            </p>
+            <div className="grid gap-px overflow-hidden rounded-xl border border-zinc-200 bg-zinc-200 sm:grid-cols-2 xl:grid-cols-5 dark:border-zinc-800 dark:bg-zinc-800">
+              {CATALOG_GROUPS.map((group) => {
+                const Icon = group.icon;
+                const is_active = sample_group === group.value && sample_category !== 'Your image';
+
+                return (
+                  <button
+                    key={group.value}
+                    type="button"
+                    disabled={is_loading_source}
+                    aria-pressed={is_active}
+                    className={cn(
+                      'min-w-0 px-4 py-4 text-left outline-none transition-colors focus-visible:z-10 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600 disabled:cursor-wait disabled:opacity-60',
+                      is_active
+                        ? 'bg-zinc-950 text-white dark:bg-zinc-100 dark:text-zinc-950'
+                        : 'bg-white text-zinc-950 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-950',
+                    )}
+                    onClick={() => {
+                      set_sample_group(group.value);
+                      load_sample(group.value);
+                    }}
+                  >
+                    <Icon aria-hidden="true" className="size-5" strokeWidth={1.7} />
+                    <span className="mt-5 block text-sm font-semibold">{group.label}</span>
+                    <span
+                      className={cn(
+                        'mt-1 block text-xs leading-5',
+                        is_active
+                          ? 'text-zinc-300 dark:text-zinc-600'
+                          : 'text-zinc-500 dark:text-zinc-400',
+                      )}
+                    >
+                      {group.detail}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="comparison-heading" className="mt-8 space-y-4">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2">
@@ -493,12 +700,12 @@ export default function DetailPreservation() {
               Inspect detail
             </h2>
             <p className="mt-1 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-              Both crops show exactly the same point at the same magnification.
+              Compare the same point in the original, a degraded delivery, and a detail-preserving version.
             </p>
           </div>
 
           {source && converted ? (
-            <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               <DetailCrop
                 label="Original"
                 image_url={source.url}
@@ -507,8 +714,15 @@ export default function DetailPreservation() {
                 height={source.height}
               />
               <DetailCrop
-                label={converted.format.toUpperCase()}
-                image_url={converted.url}
+                label="Degraded"
+                image_url={degraded_preview?.url}
+                focus_point={focus_point}
+                width={source.width}
+                height={source.height}
+              />
+              <DetailCrop
+                label="Detail-preserving"
+                image_url={preset === 'high' ? converted.url : high_quality_converted?.url}
                 focus_point={focus_point}
                 width={source.width}
                 height={source.height}
